@@ -1,0 +1,120 @@
+<launch>
+  <arg name="paused" default="true" />
+  <arg name="use_sim_time" default="true" />
+  <arg name="gui" default="true" />
+  <arg name="headless" default="false" />
+  <arg name="debug" default="false" />
+  <arg name="enable_logging" default="false"/>
+  <arg name="enable_ground_truth" default="true"/>
+  <arg name="log_file" default="simple_airplane"/>
+
+  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+    <arg name="world_name" value="$(find simple_airplane_gazebo)/worlds/simple_airplane_empty_word.world"/>
+    <!-- <arg name="world_name" value="" /> -->
+    <arg name="debug" value="$(arg debug)" />
+    <arg name="gui" value="$(arg gui)" />
+    <arg name="paused" value="$(arg paused)" />
+    <arg name="use_sim_time" value="$(arg use_sim_time)" />
+    <arg name="headless" value="$(arg headless)" />
+  </include>
+
+  <!-- <arg name="map_res" default="0.1"/>
+  <arg name="map_file" default="$(find mrp_p3dx_2dnav)/map_5_3.bmp"/> -->
+    <!-- Run the map server  $(arg map_res)    -->
+  <!-- <node name="map_server" pkg="map_server" type="map_server" args="$(arg map_file) $(arg map_res)"  respawn="true" />  -->
+  
+  <!-- <arg name="model" default="$(find simple_airplane_description)/urdf/simple_airplane.xacro"/>   -->
+  <!-- send the robot XML to param server -->
+  <param name="robot_description" command="
+    $(find xacro)/xacro.py '$(find simple_airplane_description)/urdf/simple_airplane.xacro'
+    enable_logging:=$(arg enable_logging)
+    enable_ground_truth:=$(arg enable_ground_truth)
+    log_file:=$(arg log_file)"
+  />
+
+  <!-- =================================================================================== -->
+
+  <rosparam file="$(find simple_airplane_control)/config/suav.yaml" command="load"
+    ns="/suav1" /> 
+
+  <arg name="group_prefix" default="suav1"/>
+  <group ns="$(arg group_prefix)">
+
+    <arg name="name" default="$(arg group_prefix)"/>
+    <arg name="x" default="0.0"/>
+    <arg name="y" default="0.0"/>
+    <arg name="z" default="2"/>
+
+    <arg name="tf_prefix" default="$(arg group_prefix)"/>
+    <param name="tf_prefix" type="string" value="$(arg tf_prefix)" />
+    <param name="suav_altitude" type="double" value="$(arg z)" />
+
+    <!-- push robot_description to factory and spawn robot in gazebo -->
+    <node name="simple_airplane" pkg="gazebo_ros" type="spawn_model"
+     args="-param /robot_description
+           -urdf
+           -x $(arg x)
+           -y $(arg y)
+           -z $(arg z)
+           -model $(arg name)"
+     respawn="false" output="screen">
+    </node>
+
+    <node pkg="robot_state_publisher" type="state_publisher" name="robot_state_publisher">
+        <!-- <remap from="robot_description" to="/robot_description" /> -->
+        <param name="publish_frequency" type="double" value="30.0"/>
+        <param name="tf_prefix" type="string" value="$(arg tf_prefix)"/>
+    </node>
+
+  </group>
+
+  <node name="controller_spawner" pkg="controller_manager" type="spawner"
+  respawn="false" ns="/suav1" output="screen" args=" camera_pan_controller camera_tilt_controller joint_state_controller" >
+  </node>
+
+  <node pkg="tf" type="static_transform_publisher" name="map_to_odom_suav1" 
+     args="0.0 -0.0 0.0 0.0 0.0 0.0 map suav1/odom 200" />
+
+  <node name="suav_cam_follow_suav1" pkg="simple_airplane_control" type="suav_cam_follow_tgt" args="-robot suav1" />
+
+  <!-- ================================================================================= -->
+
+  <group ns="cyl1">
+
+    <arg name="name" default="simple_cylinder"/>
+    <arg name="model" default="$(find rotors_description)/urdf/simple_cylinder3.xacro"/>
+    <arg name="tf_prefix" default="cyl1"/>
+    <arg name="cylinder_length" default="0.2"/>
+    <arg name="cylinder_radius" default="0.15"/>
+    <arg name="x" default="2"/>
+    <arg name="y" default="0"/>
+    <arg name="z" default="0"/>
+
+    <!-- send the robot XML to param server -->
+    <param name="robot_description" command="
+      $(find xacro)/xacro.py '$(arg model)'
+      enable_logging:=$(arg enable_logging)
+      enable_ground_truth:=$(arg enable_ground_truth)
+      log_file:=$(arg log_file)
+      cylinder_length:=$(arg cylinder_length)
+      cylinder_radius:=$(arg cylinder_radius)"
+    />
+    <param name="tf_prefix" type="string" value="$(arg tf_prefix)" />
+
+    <!-- push robot_description to factory and spawn robot in gazebo -->
+    <node name="simple_cylinder" pkg="gazebo_ros" type="spawn_model"
+     args="-param robot_description
+           -urdf
+           -x $(arg x)
+           -y $(arg y)
+           -z $(arg z)
+           -model $(arg name)"
+     respawn="false" output="screen">
+    </node>
+
+  </group> 
+
+  <node pkg="tf" type="static_transform_publisher" name="base_to_odom_cyl1" 
+     args="0.0 -0.0 0.0 0.0 0.0 0.0 map cyl1/odom 200" />
+
+</launch>

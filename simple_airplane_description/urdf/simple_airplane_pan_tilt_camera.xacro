@@ -1,0 +1,185 @@
+<?xml version="1.0"?>
+<robot name="simple_airplane" xmlns:xacro="http://ros.org/wiki/xacro">
+
+  
+  <xacro:property name="cameraRadius" value="0.04"/>
+  <xacro:property name="cameraCoverRadius" value="0.025"/>
+  <xacro:property name="cameraLength" value="0.06"/>
+  <xacro:property name="cameraMass" value="0.2" />
+  <xacro:property name="cameraSize" value="0.05"/>
+  <xacro:property name="PI" value="3.1415926535897931"/>
+
+
+  <macro name="sphere_inertia" params="m r">
+  <inertia  ixx="${2*m*r*r/5}" ixy = "0" ixz = "0"
+    iyy="${2*m*r*r/5}" iyz = "0"
+    izz="${2*m*r*r/5}"
+  />
+  </macro>
+  <macro name="cylinder_inertia" params="m r h">
+    <inertia  ixx="${m*(3*r*r+h*h)/12}" ixy = "0" ixz = "0"
+      iyy="${m*(3*r*r+h*h)/12}" iyz = "0"
+      izz="${m*r*r/2}"
+    />
+  </macro>
+
+<!--   <joint name="camera_joint" type="fixed">
+    <gravity>0</gravity>
+    <origin xyz="-0.2 0 -0.06" rpy="0 ${PI/2} 0"/>
+    <parent link="base_link"/>
+    <child link="camera"/>
+  </joint> -->
+
+
+  <joint name="camera_pan_joint" type="continuous">
+    <gravity>0</gravity>
+    <!-- <origin xyz="0 -0.2 0.07" rpy="0 0 0"/> -->
+    <origin xyz="${mesh_scale_iso*(-0.8)} 0 ${mesh_scale_iso*(-0.28)}" rpy="0 0 0"/>
+    <axis xyz="0 0 1" />
+    <anchor xyz="0 0 0" />
+    <limit effort="100" velocity="100" k_velocity="0" />
+    <joint_properties damping="0.0" friction="0.0" />
+    <parent link="body_link"/>
+    <child link="camera_dummy_link"/>
+  </joint>
+
+  <transmission name="cam_pan_trans">
+    <gravity>0</gravity>
+      <type>transmission_interface/SimpleTransmission</type>
+      <joint name="camera_pan_joint">
+            <hardwareInterface>EffortJointInterface</hardwareInterface>
+      </joint>
+      <actuator name="camera_pan_motor">
+        <hardwareInterface>EffortJointInterface</hardwareInterface>
+        <mechanicalReduction>1</mechanicalReduction>
+      </actuator>
+  </transmission>
+
+  <link name="camera_dummy_link">
+    <gravity>0</gravity>
+<!--         <collision>
+          <origin xyz="0 0 0" rpy="0 0 0" />
+          <geometry>
+            <cylinder radius="0.0025" length="0.0025" />
+          </geometry>
+        </collision> -->
+        <visual>
+          <origin xyz="0.0 0 0" rpy="0 0 0" />
+          <geometry>
+            <cylinder radius="${mesh_scale_iso*(0.01)}" length="${mesh_scale_iso*(0.01)}" />
+          </geometry>
+        </visual>
+        <inertial>
+        <mass value="0.1" />
+        <origin xyz="0.0 0 0" rpy="0 0 0" />
+        <cylinder_inertia m="0.1" r="0.0025" h="0.0025"  />
+      </inertial>
+  </link>
+
+  <gazebo reference="camera_dummy_link">
+    <gravity>0</gravity>
+      <material>
+        Gazebo/Black
+      </material>
+  </gazebo>
+
+
+  <joint name="camera_tilt_joint" type="continuous">
+    <gravity>0</gravity>
+    <origin xyz="0 0 0" rpy="0 ${PI/2} 0"/>
+    <axis xyz="0 -1 0" />
+    <anchor xyz="0 0 0" />
+    <limit effort="100" velocity="100" k_velocity="0" />
+    <joint_properties damping="0.0" friction="0.0" />
+    <parent link="camera_dummy_link"/>
+    <child link="camera"/>
+  </joint>
+
+  <transmission name="cam_tilt_trans">
+    <gravity>0</gravity>
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="camera_tilt_joint">
+          <hardwareInterface>EffortJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="camera_tilt_motor">
+      <hardwareInterface>EffortJointInterface</hardwareInterface>
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+
+  <link name="camera">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <sphere radius="${mesh_scale_iso*(0.16)}" />
+      </geometry>
+	  <material name="CameraBlack">
+		<color rgba="0.117 0.117 0.117 1.0"/>
+	  </material>
+    </visual>
+
+    <inertial>
+      <mass value="${cameraMass}" />
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <sphere_inertia m="${cameraMass}" r="${cameraRadius}" />
+    </inertial>
+  </link>
+
+
+  <gazebo reference="camera">
+    <gravity>0</gravity>
+	  <sensor type="camera" name="camera1">
+	    <update_rate>10.0</update_rate>
+      <always_on>1</always_on>
+      <visualize>true</visualize>
+	    <camera name="head">
+	      <horizontal_fov>1.09</horizontal_fov>  <!-- 1.3962634 --> <!-- Specify in RAD -->
+	      <image>
+	        <width>128</width>
+	        <height>72</height>
+	        <format>R8G8B8</format>
+	      </image>
+	      <clip>
+	        <near>0.02</near>
+	        <far>300</far>
+	      </clip>
+	    </camera>
+	    <plugin name="camera_controller" filename="libgazebo_ros_camera.so">
+	      <alwaysOn>true</alwaysOn>
+	      <updateRate>0.0</updateRate>
+	      <cameraName>camera1</cameraName>
+	      <imageTopicName>image_raw</imageTopicName>
+	      <cameraInfoTopicName>camera_info</cameraInfoTopicName>
+	      <frameName>camera</frameName>
+	      <hackBaseline>0.07</hackBaseline>
+	      <distortionK1>0.0</distortionK1>
+	      <distortionK2>0.0</distortionK2>
+	      <distortionK3>0.0</distortionK3>
+	      <distortionT1>0.0</distortionT1>
+	      <distortionT2>0.0</distortionT2>
+	    </plugin>
+	  </sensor>
+      <gravity>0</gravity>
+      <material>
+        Gazebo/Black
+      </material>
+	</gazebo>
+
+  <!-- <gazebo reference="camera">
+    <gravity>0</gravity>
+      <material>
+        Gazebo/Black
+      </material>
+  </gazebo> -->
+
+
+
+  <gazebo>
+    <plugin name="gazebo_ros_control" filename="libgazebo_ros_control.so">
+      <!-- <robotNamespace>/MYROBOT</robotNamespace> -->
+    </plugin>
+  </gazebo>
+
+  </robot>
+
+
