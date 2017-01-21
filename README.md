@@ -6,7 +6,7 @@ This Simple ROS package provides a quick headstart for testing high level path p
 
 Just place this ROS package under the src folder of your catkin workspace before running `catkin_make`
 
-(Tested with ROS-Indigo and Gazebo 2.3)
+(Tested with ROS-Indigo and Gazebo 2.3) -- Tested OK
 
 ## Example
 
