@@ -1,0 +1,106 @@
+<robot name="cylinder_model" xmlns:xacro="http://ros.org/wiki/xacro">
+
+  <xacro:arg name="cylinder_length" default="0.4"/>
+  <xacro:arg name="cylinder_radius" default="0.25"/>
+
+  <xacro:property name="cylinder_length" value="$(arg cylinder_length)" />
+  <xacro:property name="cylinder_radius" value="$(arg cylinder_radius)" />
+
+  <macro name="cylinder_inertia" params="m r h">
+    <inertia  ixx="${m*(3*r*r+h*h)/12}" ixy = "0" ixz = "0"
+      iyy="${m*(3*r*r+h*h)/12}" iyz = "0"
+      izz="${m*r*r/2}"
+    />
+  </macro>
+
+  <!-- root link, on the ground just below the model origin -->
+  <link name="base_link">
+      <origin xyz="0 0 0" rpy="0 0 0" />
+  </link>
+
+  <gazebo reference="base_link">
+    <gravity>0</gravity>
+    <material>
+      Gazebo/Red
+    </material>
+  </gazebo>
+
+  <joint name="base_link_joint" type="fixed">
+    <gravity>0</gravity>
+    <origin xyz="0.0 0 0" rpy="0 0 0" />
+    <parent link="base_link"/>
+    <child link="body_link" />
+  </joint>
+
+  <!-- the model -->
+  <link name="body_link">
+    <inertial>
+      <mass value="0.1" />
+      <origin xyz="0 0 0" />
+      <inertia ixx="1.0" ixy="0.0" ixz="0.0"
+        iyy="1.0" iyz="0.0"
+        izz="1.0" />
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" />
+      <geometry>
+        <cylinder length="$(arg cylinder_length)" radius="$(arg cylinder_radius)" /> 
+      </geometry>
+    </visual>
+<!--     <collision>
+      <origin xyz="0 0 0" />
+      <geometry>
+        <cylinder length="$(arg cylinder_length)" radius="$(arg cylinder_radius)" />
+      </geometry>
+    </collision> -->
+  </link>
+
+  <gazebo reference="body_link">
+    <gravity>0</gravity>
+    <material>
+      Gazebo/Red
+    </material>
+  </gazebo>
+
+
+<!--   <joint name="cover_link_joint" type="fixed">
+    <gravity>0</gravity>
+    <origin xyz="0.0 0 0" rpy="0 0 0" />
+    <parent link="base_link"/>
+    <child link="cover_link" />
+  </joint>
+
+  <link name="cover_link">
+    <inertial>
+      <mass value="0.1" />
+      <origin xyz="0 0 0" />
+      <inertia ixx="1.0" ixy="0.0" ixz="0.0"
+        iyy="1.0" iyz="0.0"
+        izz="1.0" />
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" />
+      <geometry>
+        <cylinder length="${ cylinder_length*0.95 }" radius="${ cylinder_radius*1.05 }" /> 
+      </geometry>
+    </visual>
+  </link>
+
+  <gazebo reference="cover_link">
+    <gravity>0</gravity>
+    <material>
+      Gazebo/Red
+    </material>
+  </gazebo> -->
+
+  <gazebo>
+    <plugin name="object_controller" filename="libgazebo_ros_planar_move.so">
+      <commandTopic>cmd_vel</commandTopic>
+      <odometryTopic>odom</odometryTopic>
+      <odometryFrame>odom</odometryFrame>
+      <odometryRate>20.0</odometryRate>
+      <robotBaseFrame>base_link</robotBaseFrame>
+    </plugin>
+  </gazebo>
+
+</robot>
